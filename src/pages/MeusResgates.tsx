@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Ticket, CheckCircle2, Clock, XCircle, Copy, Check, Gift, ArrowLeft, ExternalLink, X } from 'lucide-react';
+import { Ticket, CheckCircle2, Clock, XCircle, Copy, Check, Gift, ArrowLeft, ExternalLink, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { redemptionService } from '../services/redemptionService';
 import type { Redemption } from '../types';
@@ -10,6 +10,10 @@ export default function MeusResgates() {
   const [filtro, setFiltro] = useState<'todos' | 'pending' | 'collected'>('todos');
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [valeSelecionado, setValeSelecionado] = useState<Redemption | null>(null);
+
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 6;
 
   useEffect(() => {
     carregarMeusResgates();
@@ -68,6 +72,10 @@ export default function MeusResgates() {
     return true;
   });
 
+  const totalPaginas = Math.ceil(resgatesFiltrados.length / itensPorPagina) || 1;
+  const indiceInicial = (paginaAtual - 1) * itensPorPagina;
+  const resgatesPaginados = resgatesFiltrados.slice(indiceInicial, indiceInicial + itensPorPagina);
+
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
@@ -121,19 +129,19 @@ export default function MeusResgates() {
           {/* Filtros */}
           <div className="flex items-center gap-2 bg-gray-100/80 p-1 rounded-xl text-xs font-bold">
             <button 
-              onClick={() => setFiltro('todos')} 
+              onClick={() => { setFiltro('todos'); setPaginaAtual(1); }} 
               className={`px-3 py-1.5 rounded-lg transition-all ${filtro === 'todos' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
             >
               Todos ({resgates.length})
             </button>
             <button 
-              onClick={() => setFiltro('pending')} 
+              onClick={() => { setFiltro('pending'); setPaginaAtual(1); }} 
               className={`px-3 py-1.5 rounded-lg transition-all ${filtro === 'pending' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
             >
               Pendentes ({pendentesCount})
             </button>
             <button 
-              onClick={() => setFiltro('collected')} 
+              onClick={() => { setFiltro('collected'); setPaginaAtual(1); }} 
               className={`px-3 py-1.5 rounded-lg transition-all ${filtro === 'collected' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
             >
               Entregues ({entreguesCount})
@@ -158,76 +166,121 @@ export default function MeusResgates() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {resgatesFiltrados.map((resgate) => {
-              const isPendente = resgate.status?.toLowerCase() === 'pending' || resgate.status === '1';
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {resgatesPaginados.map((resgate) => {
+                const isPendente = resgate.status?.toLowerCase() === 'pending' || resgate.status === '1';
 
-              return (
-                <div 
-                  key={resgate.id} 
-                  className={`rounded-2xl border p-5 transition-all flex flex-col justify-between ${
-                    isPendente 
-                      ? 'bg-gradient-to-br from-amber-50/40 via-white to-white border-amber-200/80 shadow-sm hover:shadow-md' 
-                      : 'bg-white border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex justify-between items-start gap-3 mb-3">
-                      <div>
-                        <span className="text-xs font-extrabold text-pontus uppercase tracking-wider block mb-0.5">
-                          {resgate.pointsSpent} PONTOS
-                        </span>
-                        <h3 className="font-bold text-gray-900 text-base">{resgate.productName}</h3>
+                return (
+                  <div 
+                    key={resgate.id} 
+                    className={`rounded-2xl border p-5 transition-all flex flex-col justify-between ${
+                      isPendente 
+                        ? 'bg-gradient-to-br from-amber-50/40 via-white to-white border-amber-200/80 shadow-sm hover:shadow-md' 
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start gap-3 mb-3">
+                        <div>
+                          <span className="text-xs font-extrabold text-pontus uppercase tracking-wider block mb-0.5">
+                            {resgate.pointsSpent} PONTOS
+                          </span>
+                          <h3 className="font-bold text-gray-900 text-base">{resgate.productName}</h3>
+                        </div>
+                        {getStatusBadge(resgate.status)}
                       </div>
-                      {getStatusBadge(resgate.status)}
+
+                      {/* Caixa de Código do Vale */}
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 my-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">CÓDIGO DE RETIRADA</p>
+                          <p className="font-mono font-black text-lg text-gray-900 tracking-wider select-all">{resgate.voucherCode}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleCopiarCodigo(resgate.voucherCode, resgate.id)}
+                          className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            copiadoId === resgate.id 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
+                          }`}
+                          title="Copiar código"
+                        >
+                          {copiadoId === resgate.id ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                          <span>{copiadoId === resgate.id ? 'Copiado!' : 'Copiar'}</span>
+                        </button>
+                      </div>
+
+                      <div className="text-[11px] text-gray-500 space-y-1">
+                        <p>🗓️ Resgatado em: <strong>{new Date(resgate.createdAt).toLocaleDateString('pt-BR')}</strong></p>
+                        {resgate.expiresAt && (
+                          <p>⏳ Válido até: <strong>{new Date(resgate.expiresAt).toLocaleDateString('pt-BR')}</strong></p>
+                        )}
+                        {resgate.collectedAt && (
+                          <p className="text-emerald-700 font-medium">✅ Retirado em: <strong>{new Date(resgate.collectedAt).toLocaleDateString('pt-BR')}</strong></p>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Caixa de Código do Vale */}
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 my-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">CÓDIGO DE RETIRADA</p>
-                        <p className="font-mono font-black text-lg text-gray-900 tracking-wider select-all">{resgate.voucherCode}</p>
-                      </div>
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400">
+                        {isPendente ? 'Apresente este vale na recepção' : 'Resgate finalizado'}
+                      </span>
                       <button 
-                        onClick={() => handleCopiarCodigo(resgate.voucherCode, resgate.id)}
-                        className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                          copiadoId === resgate.id 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
-                        }`}
-                        title="Copiar código"
+                        onClick={() => setValeSelecionado(resgate)}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-pontus hover:text-pontus-dark hover:underline"
                       >
-                        {copiadoId === resgate.id ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                        <span>{copiadoId === resgate.id ? 'Copiado!' : 'Copiar'}</span>
+                        <ExternalLink size={13} /> Abrir Vale em Tela Cheia
                       </button>
                     </div>
-
-                    <div className="text-[11px] text-gray-500 space-y-1">
-                      <p>🗓️ Resgatado em: <strong>{new Date(resgate.createdAt).toLocaleDateString('pt-BR')}</strong></p>
-                      {resgate.expiresAt && (
-                        <p>⏳ Válido até: <strong>{new Date(resgate.expiresAt).toLocaleDateString('pt-BR')}</strong></p>
-                      )}
-                      {resgate.collectedAt && (
-                        <p className="text-emerald-700 font-medium">✅ Retirado em: <strong>{new Date(resgate.collectedAt).toLocaleDateString('pt-BR')}</strong></p>
-                      )}
-                    </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[11px] text-gray-400">
-                      {isPendente ? 'Apresente este vale na recepção' : 'Resgate finalizado'}
-                    </span>
-                    <button 
-                      onClick={() => setValeSelecionado(resgate)}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-pontus hover:text-pontus-dark hover:underline"
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-100 text-xs text-gray-500">
+                <p>
+                  Exibindo <strong>{indiceInicial + 1}</strong> a <strong>{Math.min(indiceInicial + itensPorPagina, resgatesFiltrados.length)}</strong> de <strong>{resgatesFiltrados.length}</strong> vales
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                    disabled={paginaAtual === 1}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
+                    <button
+                      key={pagina}
+                      onClick={() => setPaginaAtual(pagina)}
+                      className={`w-8 h-8 rounded-lg font-bold transition-all ${
+                        paginaAtual === pagina
+                          ? 'bg-pontus text-white shadow-sm'
+                          : 'border border-gray-200 hover:bg-gray-50 text-gray-700'
+                      }`}
                     >
-                      <ExternalLink size={13} /> Abrir Vale em Tela Cheia
+                      {pagina}
                     </button>
-                  </div>
+                  ))}
+
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                    disabled={paginaAtual === totalPaginas}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Próxima página"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

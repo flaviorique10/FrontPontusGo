@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, X, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Search, Plus, Trash2, X, CheckCircle2, AlertCircle, Sparkles, ChevronLeft, ChevronRight, Gift, Package } from 'lucide-react';
 import { productService } from '../services/productService';
 import type { Product } from '../types';
 
@@ -8,6 +8,10 @@ export default function Recompensas() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [mensagemFeedback, setMensagemFeedback] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
+
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 8;
 
   // Estados do Modal
   const [modalAberto, setModalAberto] = useState(false);
@@ -51,6 +55,7 @@ export default function Recompensas() {
       setModalAberto(false);
       setNovoProduto({ name: '', description: '', pointsCost: 0, stockQuantity: 0 });
       await carregarProdutos();
+      setPaginaAtual(1);
       exibirFeedback('sucesso', 'Recompensa criada e adicionada ao catálogo com sucesso!');
     } catch (error: any) {
       console.error("Erro ao criar produto:", error);
@@ -82,6 +87,10 @@ export default function Recompensas() {
     p.name.toLowerCase().includes(busca.toLowerCase()) ||
     (p.description && p.description.toLowerCase().includes(busca.toLowerCase()))
   );
+
+  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina) || 1;
+  const indiceInicial = (paginaAtual - 1) * itensPorPagina;
+  const produtosPaginados = produtosFiltrados.slice(indiceInicial, indiceInicial + itensPorPagina);
 
   return (
     <div className="space-y-6 relative">
@@ -149,7 +158,7 @@ export default function Recompensas() {
               type="text" 
               placeholder="Buscar recompensa..." 
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              onChange={(e) => { setBusca(e.target.value); setPaginaAtual(1); }}
               className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pontus/50 w-full text-xs"
             />
           </div>
@@ -160,57 +169,159 @@ export default function Recompensas() {
         ) : produtosFiltrados.length === 0 ? (
           <div className="py-12 text-center text-gray-500 text-sm">Nenhuma recompensa encontrada.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 bg-gray-50/50">
-                  <th className="py-3.5 px-4 font-semibold rounded-l-xl">Recompensa</th>
-                  <th className="py-3.5 px-4 font-semibold">Custo em Pontos</th>
-                  <th className="py-3.5 px-4 font-semibold">Estoque</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold text-right rounded-r-xl">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-sm">
-                {produtosFiltrados.map((produto) => (
-                  <tr key={produto.id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <p className="font-bold text-gray-900">{produto.name}</p>
-                      {produto.description && <p className="text-xs text-gray-500 mt-0.5">{produto.description}</p>}
-                    </td>
-                    <td className="py-4 px-4 font-black text-pontus whitespace-nowrap">
+          <>
+            {/* Visualização em CARDS no Mobile (< md) */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {produtosPaginados.map((produto) => (
+                <div 
+                  key={produto.id} 
+                  className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-pontus-light/20 text-pontus flex items-center justify-center shrink-0">
+                        <Gift size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm">{produto.name}</h4>
+                        {produto.description && (
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{produto.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => handleDesativar(produto.id)}
+                      className="p-2 text-gray-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50 shrink-0" 
+                      title="Desativar item"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                    <span className="font-black text-pontus text-base">
                       {produto.pointsCost} <span className="text-xs text-gray-400 font-semibold">pts</span>
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className={`font-semibold px-2.5 py-1 rounded-lg text-xs ${
-                        produto.stockQuantity <= 5 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-gray-100 text-gray-700'
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 ${
+                        produto.stockQuantity <= 0 
+                          ? 'bg-gray-100 text-gray-600' 
+                          : produto.stockQuantity <= 5 
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                            : 'bg-gray-100 text-gray-700'
                       }`}>
-                        {produto.stockQuantity} un
+                        <Package size={12} /> {produto.stockQuantity} un
                       </span>
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
+
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                         produto.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600'
                       }`}>
                         {produto.isActive ? 'Ativo' : 'Inativo'}
                       </span>
-                    </td>
-                    <td className="py-4 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button 
-                          onClick={() => handleDesativar(produto.id)}
-                          className="p-2 text-gray-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50" 
-                          title="Desativar item"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Visualização em TABELA no Desktop (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 bg-gray-50/50">
+                    <th className="py-3.5 px-4 font-semibold rounded-l-xl">Recompensa</th>
+                    <th className="py-3.5 px-4 font-semibold">Custo em Pontos</th>
+                    <th className="py-3.5 px-4 font-semibold">Estoque</th>
+                    <th className="py-3.5 px-4 font-semibold">Status</th>
+                    <th className="py-3.5 px-4 font-semibold text-right rounded-r-xl">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-sm">
+                  {produtosPaginados.map((produto) => (
+                    <tr key={produto.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <p className="font-bold text-gray-900">{produto.name}</p>
+                        {produto.description && <p className="text-xs text-gray-500 mt-0.5">{produto.description}</p>}
+                      </td>
+                      <td className="py-4 px-4 font-black text-pontus whitespace-nowrap">
+                        {produto.pointsCost} <span className="text-xs text-gray-400 font-semibold">pts</span>
+                      </td>
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <span className={`font-semibold px-2.5 py-1 rounded-lg text-xs ${
+                          produto.stockQuantity <= 5 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {produto.stockQuantity} un
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          produto.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {produto.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button 
+                            onClick={() => handleDesativar(produto.id)}
+                            className="p-2 text-gray-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50" 
+                            title="Desativar item"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-100 text-xs text-gray-500">
+                <p>
+                  Exibindo <strong>{indiceInicial + 1}</strong> a <strong>{Math.min(indiceInicial + itensPorPagina, produtosFiltrados.length)}</strong> de <strong>{produtosFiltrados.length}</strong> recompensas
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                    disabled={paginaAtual === 1}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
+                    <button
+                      key={pagina}
+                      onClick={() => setPaginaAtual(pagina)}
+                      className={`w-8 h-8 rounded-lg font-bold transition-all ${
+                        paginaAtual === pagina
+                          ? 'bg-pontus text-white shadow-sm'
+                          : 'border border-gray-200 hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {pagina}
+                    </button>
+                  ))}
+
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                    disabled={paginaAtual === totalPaginas}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Próxima página"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

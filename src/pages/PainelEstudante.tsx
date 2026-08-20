@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Gift, Ticket, X, CheckCircle2, Clock, AlertTriangle, Sparkles, Trophy, ArrowRight } from 'lucide-react';
+import { Gift, Ticket, X, CheckCircle2, Clock, AlertTriangle, Sparkles, Trophy, ArrowRight, Search, ChevronLeft, ChevronRight, PackageCheck, PackageX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { productService } from '../services/productService';
@@ -12,6 +12,11 @@ export default function PainelEstudante() {
   const [produtos, setProdutos] = useState<Product[]>([]);
   const [perfil, setPerfil] = useState<StudentProfile | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [busca, setBusca] = useState('');
+  
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 8;
   
   const [modalResgate, setModalResgate] = useState<RedemptionResult | null>(null);
   const [resgatandoId, setResgatandoId] = useState<string | null>(null);
@@ -40,6 +45,11 @@ export default function PainelEstudante() {
   };
 
   const handleResgatar = async (produto: Product) => {
+    if (produto.stockQuantity <= 0) {
+      alert("Desculpe, este produto está esgotado no estoque.");
+      return;
+    }
+
     if (window.confirm(`Deseja resgatar "${produto.name}" por ${produto.pointsCost} pontos?`)) {
       try {
         setResgatandoId(produto.id);
@@ -86,6 +96,16 @@ export default function PainelEstudante() {
   const maxPts = perfil?.maxDailyPoints ?? 30;
   const percentualHoje = Math.min(100, Math.round((ptsHoje / maxPts) * 100));
   const valesPendentes = perfil?.pendingRedemptions ?? 0;
+
+  // Filtragem e Paginação dos Produtos
+  const produtosFiltrados = produtos.filter(p => 
+    p.name.toLowerCase().includes(busca.toLowerCase()) ||
+    (p.description && p.description.toLowerCase().includes(busca.toLowerCase()))
+  );
+
+  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina) || 1;
+  const indiceInicial = (paginaAtual - 1) * itensPorPagina;
+  const produtosPaginados = produtosFiltrados.slice(indiceInicial, indiceInicial + itensPorPagina);
 
   return (
     <div className="space-y-6">
@@ -190,47 +210,177 @@ export default function PainelEstudante() {
       </div>
 
       {/* Catálogo de Prêmios */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Catálogo de Prêmios</h2>
-          <Link to="/aluno/resgates" className="text-xs font-bold text-pontus hover:underline flex items-center gap-1">
-            <Ticket size={14} /> Consultar Vales Já Resgatados
-          </Link>
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">Catálogo de Prêmios</h2>
+            <p className="text-xs text-gray-500">Troque seus pontos conquistados por recompensas oficiais</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            {/* Busca Rápida */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Buscar prêmio..." 
+                value={busca}
+                onChange={(e) => { setBusca(e.target.value); setPaginaAtual(1); }}
+                className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pontus/50 w-full text-xs bg-gray-50/50"
+              />
+            </div>
+
+            <Link to="/aluno/resgates" className="text-xs font-bold text-pontus hover:text-pontus-dark flex items-center justify-center gap-1.5 px-3 py-2 bg-pontus-light/10 rounded-xl hover:bg-pontus-light/20 transition-colors shrink-0">
+              <Ticket size={14} /> Meus Vales
+            </Link>
+          </div>
         </div>
 
         {carregando ? (
-          <p className="text-sm text-gray-400">Carregando prêmios...</p>
-        ) : produtos.length === 0 ? (
-          <p className="text-gray-500 text-sm">Nenhum prêmio disponível no momento.</p>
+          <div className="py-16 text-center text-gray-400 text-sm">Carregando prêmios...</div>
+        ) : produtosFiltrados.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
+              <Gift size={32} />
+            </div>
+            <p className="text-gray-700 font-bold text-base mb-1">Nenhum prêmio encontrado</p>
+            <p className="text-gray-400 text-xs">Tente buscar por outro termo ou aguarde novos cadastros.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {produtos.map((produto) => (
-              <div key={produto.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                <div className="bg-gray-50 p-6 flex justify-center items-center h-48 border-b border-gray-100 relative">
-                  <Gift size={48} className="text-gray-300" />
-                  {produto.stockQuantity <= 5 && (
-                    <span className="absolute top-2 right-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-md">
-                      Restam {produto.stockQuantity}
-                    </span>
-                  )}
-                </div>
-                <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="font-bold text-gray-900 text-lg">{produto.name}</h3>
-                  {produto.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{produto.description}</p>}
-                  <div className="mt-auto pt-4 flex items-center justify-between">
-                    <span className="text-2xl font-black text-pontus">{produto.pointsCost} <span className="text-sm text-gray-500 font-medium">pts</span></span>
-                  </div>
-                  <button 
-                    onClick={() => handleResgatar(produto)}
-                    disabled={resgatandoId === produto.id || (perfil?.totalPoints ?? 0) < produto.pointsCost}
-                    className="w-full mt-4 bg-pontus hover:bg-pontus-dark disabled:bg-gray-300 text-white font-bold py-2.5 rounded-xl transition-colors"
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {produtosPaginados.map((produto) => {
+                const saldoAtual = perfil?.totalPoints ?? 0;
+                const temPontosSuficientes = saldoAtual >= produto.pointsCost;
+                const emEstoque = produto.stockQuantity > 0;
+                const pontosFaltantes = produto.pointsCost - saldoAtual;
+                const isResgatando = resgatandoId === produto.id;
+
+                return (
+                  <div 
+                    key={produto.id} 
+                    className={`rounded-2xl border transition-all flex flex-col overflow-hidden ${
+                      !emEstoque 
+                        ? 'bg-gray-50/70 border-gray-200 opacity-80' 
+                        : 'bg-white border-gray-100 shadow-xs hover:shadow-md hover:border-gray-200'
+                    }`}
                   >
-                    {resgatandoId === produto.id ? 'Aguarde...' : 'Resgatar'}
+                    {/* Imagem / Área de Destaque */}
+                    <div className="bg-gradient-to-b from-gray-50 to-gray-100/60 p-6 flex justify-center items-center h-44 border-b border-gray-100 relative">
+                      <Gift size={44} className={emEstoque ? "text-pontus/40" : "text-gray-300"} />
+                      
+                      {/* Badge de Estoque */}
+                      <div className="absolute top-2.5 right-2.5">
+                        {!emEstoque ? (
+                          <span className="inline-flex items-center gap-1 bg-gray-800 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                            <PackageX size={12} /> Esgotado
+                          </span>
+                        ) : produto.stockQuantity <= 5 ? (
+                          <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xs animate-pulse">
+                            Restam {produto.stockQuantity} un.
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-white/95 text-gray-700 border border-gray-200 text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-xs">
+                            <PackageCheck size={12} className="text-emerald-500" /> {produto.stockQuantity} un.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Informações */}
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-base leading-snug">{produto.name}</h3>
+                        {produto.description && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{produto.description}</p>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-100">
+                        <div className="flex items-baseline justify-between mb-3">
+                          <span className="text-2xl font-black text-pontus">
+                            {produto.pointsCost} <span className="text-xs text-gray-400 font-bold">pts</span>
+                          </span>
+                          <span className="text-[11px] text-gray-400 font-medium">
+                            {emEstoque ? `Estoque: ${produto.stockQuantity}` : 'Sem estoque'}
+                          </span>
+                        </div>
+
+                        {/* Botão com estados claros */}
+                        {!emEstoque ? (
+                          <button 
+                            disabled
+                            className="w-full bg-gray-200 text-gray-400 font-bold py-2.5 rounded-xl text-xs cursor-not-allowed"
+                          >
+                            Produto Esgotado
+                          </button>
+                        ) : !temPontosSuficientes ? (
+                          <button 
+                            disabled
+                            className="w-full bg-gray-100 text-gray-500 font-semibold py-2.5 rounded-xl text-xs cursor-not-allowed border border-gray-200"
+                            title={`Você precisa de mais ${pontosFaltantes} pontos`}
+                          >
+                            Faltam {pontosFaltantes.toLocaleString('pt-BR')} pts
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleResgatar(produto)}
+                            disabled={isResgatando}
+                            className="w-full bg-pontus hover:bg-pontus-dark disabled:bg-gray-300 text-white font-bold py-2.5 rounded-xl transition-all shadow-sm hover:shadow text-xs"
+                          >
+                            {isResgatando ? 'Resgatando...' : 'Resgatar Prêmio'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Paginação do Catálogo */}
+            {totalPaginas > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pt-6 border-t border-gray-100 text-xs text-gray-500">
+                <p>
+                  Exibindo <strong>{indiceInicial + 1}</strong> a <strong>{Math.min(indiceInicial + itensPorPagina, produtosFiltrados.length)}</strong> de <strong>{produtosFiltrados.length}</strong> prêmios
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                    disabled={paginaAtual === 1}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
+                    <button
+                      key={pagina}
+                      onClick={() => setPaginaAtual(pagina)}
+                      className={`w-8 h-8 rounded-lg font-bold transition-all ${
+                        paginaAtual === pagina
+                          ? 'bg-pontus text-white shadow-sm'
+                          : 'border border-gray-200 hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {pagina}
+                    </button>
+                  ))}
+
+                  <button 
+                    onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                    disabled={paginaAtual === totalPaginas}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+                    title="Próxima página"
+                  >
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

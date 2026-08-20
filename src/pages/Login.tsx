@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext'; // <--- Importando o nosso contexto!
+import { useAuth, type User } from '../contexts/AuthContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +10,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
-  const { login } = useAuth(); // <--- Pegando a função de login do cérebro
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,32 +20,25 @@ export default function Login() {
     try {
       const response = await api.post('/api/Auth/login', { email, password });
       
-      // MUDANÇA AQUI: Tenta pegar o token minúsculo (token) ou maiúsculo (Token)
-      const token = response.data.token || response.data.Token;
+      const userData: User = response.data.user || response.data.User;
 
-      if (!token) {
-        throw new Error("Token não encontrado na resposta da API.");
+      if (!userData) {
+        throw new Error("Dados do usuário não encontrados na resposta da API.");
       }
 
-      // Avisa o AuthContext que logamos
-      login(token);
+      // O token JWT HttpOnly foi gravado automaticamente no cookie pelo navegador
+      // Salvamos apenas as credenciais visuais no AuthContext
+      login(userData);
       
-      // Decodifica para saber a rota
-      const decoded: any = jwtDecode(token);
-      
-      // Pega a Role (cobre o schema longo padrão do .NET e o curto)
-      const userRole = decoded.role || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-
-      if (userRole === 'Admin') {
+      if (userData.role === 'Admin') {
         navigate('/recompensas');
       } else {
         navigate('/aluno');
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro no login:", err);
-      // Se você abrir a aba "Console" (do lado de Network), vai ver o erro real aqui
-      setError('E-mail ou senha inválidos. Tente novamente.');
+      setError(err.response?.data?.message || 'E-mail ou senha inválidos. Tente novamente.');
     } finally {
       setIsLoading(false);
     }

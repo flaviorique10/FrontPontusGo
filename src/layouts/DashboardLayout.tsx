@@ -21,21 +21,21 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* SIDEBAR DESKTOP */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200">
-        <div className="p-6">
+      {/* SIDEBAR DESKTOP (Fixa/Sticky na lateral com Perfil sempre visível no rodapé) */}
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-screen sticky top-0 shrink-0 z-30">
+        <div className="p-6 shrink-0">
           <h1 className="text-2xl font-bold text-pontus">Pontus<span className="text-gray-800">Go</span></h1>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname.includes(item.href);
             return (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                  isActive ? 'bg-pontus-light/20 text-pontus-dark' : 'text-gray-600 hover:bg-gray-50'
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                  isActive ? 'bg-pontus-light/20 text-pontus-dark font-bold shadow-xs' : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <item.icon size={20} />
@@ -45,20 +45,24 @@ export default function DashboardLayout() {
           })}
         </nav>
 
-        {/* PERFIL DINÂMICO DESKTOP */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 p-2">
-            <div className="w-10 h-10 rounded-full bg-pontus text-white flex items-center justify-center font-bold">
+        {/* PERFIL DINÂMICO DESKTOP (Fixo no rodapé da Sidebar) */}
+        <div className="p-4 border-t border-gray-200 mt-auto shrink-0 bg-white">
+          <div className="flex items-center gap-3 p-2 bg-gray-50/80 rounded-xl border border-gray-100">
+            <div className="w-10 h-10 rounded-full bg-pontus text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+              <p className="text-sm font-bold text-gray-900 truncate">{user?.name}</p>
               <p className="text-xs text-gray-500 truncate">
                 {user?.role === 'Admin' ? 'Administrador' : 'Estudante'}
               </p>
             </div>
-            <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors">
-              <LogOut size={20} />
+            <button 
+              onClick={logout} 
+              className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+              title="Sair do sistema"
+            >
+              <LogOut size={18} />
             </button>
           </div>
         </div>

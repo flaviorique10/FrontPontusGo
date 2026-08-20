@@ -208,7 +208,61 @@ export default function Validacao() {
           <div className="py-12 text-center text-gray-500 text-sm">Nenhum registro encontrado para os filtros selecionados.</div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Visualização em CARDS no Mobile (< md) */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {resgatesPaginados.map((resgate) => {
+                const isPendente = resgate.status?.toLowerCase() === 'pending' || resgate.status === '1';
+
+                return (
+                  <div 
+                    key={resgate.id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 ${
+                      isPendente 
+                        ? 'bg-amber-50/30 border-amber-200/80 shadow-xs' 
+                        : 'bg-white border-gray-100 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">{resgate.studentName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Resgatado em {new Date(resgate.createdAt).toLocaleDateString('pt-BR')}</p>
+                      </div>
+                      {getStatusBadge(resgate.status)}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs p-2.5 bg-white/80 rounded-xl border border-gray-100">
+                      <div>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold">Recompensa</span>
+                        <span className="font-bold text-gray-800">{resgate.productName}</span>
+                      </div>
+                      <span className="font-black text-pontus text-sm">{resgate.pointsSpent} pts</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="bg-slate-100/90 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <span className="text-[10px] text-gray-400 block font-bold">CÓDIGO</span>
+                        <span className="font-mono font-black text-xs text-gray-900 tracking-wider select-all">{resgate.voucherCode}</span>
+                      </div>
+
+                      {isPendente ? (
+                        <button
+                          onClick={() => handleValidar(undefined, resgate.voucherCode)}
+                          disabled={validando}
+                          className="inline-flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl transition-all font-bold shadow-xs"
+                        >
+                          <Check size={14} /> Entregar Prêmio
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-medium px-3 py-1.5 bg-gray-50 rounded-lg">Entrega Concluída</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Visualização em TABELA no Desktop (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[750px]">
                 <thead>
                   <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 bg-gray-50/50">
